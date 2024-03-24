@@ -55,7 +55,21 @@ public class FileRepository {
     }
 
 
-
+    public int add(Quiz quiz) throws IOException {
+        Path path = Paths.get(QUIZ_DATABASE_NAME);
+        List<Quiz> quizzes = findAllQuizzes();
+        int id = 0;
+        for(Quiz q : quizzes) {
+            if(q.getId() > id) {
+                id = q.getId();
+            }
+        }
+        id = id + 1;
+        quiz.setId(id);
+        String data = quiz.toLine(id);
+        appendToFile(path, data + NEW_LINE);
+        return id;
+    }
 
 
     public List<Question> findAllQuestions() throws IOException {
@@ -74,7 +88,26 @@ public class FileRepository {
     }
 
 
+    public List<Quiz> findAllQuizzes() throws IOException {
+        List<Quiz> result = new ArrayList<>();
 
+        Path path = Paths.get(QUIZ_DATABASE_NAME);
+        if (Files.exists(path)) {
+            List<String> data = Files.readAllLines(path);
+            for (String line : data) {
+                List<Question> matchedQuestions = new ArrayList<>();
+                if(line.trim().length() != 0) {
+                    Quiz q = Quiz.fromLine(line);
+                    for(Integer questionID : q.getQuestionIds()){
+                        matchedQuestions.add(this.get(questionID));
+                    }
+                    q.setQuestions(matchedQuestions);
+                    result.add(q);
+                }
+            }
+        }
+        return result;
+    }
 
 
     public List<Question> find(String answer) throws IOException {
@@ -109,6 +142,37 @@ public class FileRepository {
             }
         }
         return null;
+    }
+
+    public Quiz getQuiz(Integer id) throws IOException {
+        List<Quiz> quizzes = findAllQuizzes();
+        for (Quiz quiz : quizzes) {
+            if (quiz.getId() == id) {
+                return quiz;
+            }
+        }
+        return null;
+    }
+
+    public void updateQuiz(Integer id, List<Integer> questionIds, String title) throws  IOException {
+        List<Quiz> quizzes = findAllQuizzes();
+        clearFile(QUIZ_DATABASE_NAME);
+        for (Quiz quiz : quizzes) {
+            if (quiz.getId() == id) {
+                if(questionIds != null){
+                    quiz.setQuestionIds(questionIds);
+                }
+                if(title != null){
+                    quiz.setTitle(title);
+                }
+            }
+            add(quiz);
+        }
+    }
+
+    private void clearFile(String fileName) throws IOException {
+        Path path = Paths.get(fileName);
+        Files.write(path, new byte[0], StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     public boolean updateImage(int id, MultipartFile file) throws IOException {
